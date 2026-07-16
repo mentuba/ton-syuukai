@@ -30,19 +30,45 @@ Bot を起動します。
 npm start
 ```
 
-## 外部ホスティング（Koyeb等）について
+## Render.comでのデプロイ（Web Service）
 
-Koyebなどの無料枠でDockerデプロイする場合を想定して、`Dockerfile` と keep-alive用の簡易HTTPサーバー（`utils/keepAlive.js`）を同梱しています。
+Render.comの Web Service で常時起動する想定で `render.yaml` を同梱しています。
+
+### 手順
 
 1. GitHubにこのプロジェクトをpush（`.env`は含めないでください）。
-2. Koyebでサービス作成時、Builderを **Dockerfile** に設定。
-3. Environment variables に `TOKEN`・`APPLICATION_ID`・（必要なら）`GUILD_ID` を設定。
-4. Exposed ports を `3000`（`Dockerfile`の`EXPOSE`と合わせる。変更する場合は`PORT`も設定）に設定してデプロイ。
-5. デプロイ後に発行されるURLを [UptimeRobot](https://uptimerobot.com/) 等で定期的にpingすることで、無料枠のスリープを防ぎ常時起動できます。
+2. Renderのダッシュボードで **New +** → **Web Service** を選択し、リポジトリを接続。
+3. 設定項目（`render.yaml`を検出した場合は自動入力されます。手動の場合は以下を入力）
+   - **Runtime**: Node
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Plan**: Free（常時起動させたい場合は有料プランを推奨。下記「スリープについて」参照）
+4. **Environment** タブで環境変数を設定
+   - `TOKEN`: Botトークン
+   - `APPLICATION_ID`: アプリケーションID
+   - `GUILD_ID`: （任意）動作確認用サーバーID
+   - `PORT` は設定不要です。Renderが自動的に注入する `PORT` を `utils/keepAlive.js` がそのまま使用します。
+5. Deployを実行。ログに `ログインしました: xxxx#0000` と表示されればBotの起動は成功です。
 
-`utils/keepAlive.js` はDiscord Botとしての動作には不要ですが、上記のような外形監視での常時起動を目的とした簡易HTTPサーバーです。ローカル開発時は `.env` で `KEEP_ALIVE=false` にすると起動しません。
+### コマンド登録について
 
-事前にコマンド登録（`npm run deploy`）はローカルまたはCI等で一度実行しておく必要があります（Koyeb起動時には自動実行されません）。
+Render起動時（`npm start` = `node index.js`）ではスラッシュコマンドの登録（`deploy-commands.js`）は実行されません。以下のいずれかで登録してください。
+
+- ローカルで一度だけ `npm run deploy` を実行する
+- もしくは Render の **Build Command** を `npm install && node deploy-commands.js` に変更し、デプロイのたびに自動登録する（コマンド内容は冪等に上書きされるので複数回実行しても問題ありません）
+
+### スリープについて
+
+Renderの無料プランのWeb Serviceは、一定時間（15分程度）外部からのHTTPアクセスがないとスリープします。スリープするとDiscord Botとしても応答しなくなるため、常時起動させたい場合は次のいずれかが必要です。
+
+- 有料プランにアップグレードする（推奨）
+- [UptimeRobot](https://uptimerobot.com/) などの外形監視サービスから、RenderのサービスURL（例: `https://xxxx.onrender.com`）に対して定期的にHTTPアクセスする
+
+`utils/keepAlive.js` はこの外形監視を受けるための簡易HTTPサーバーで、どのパスにアクセスしても200を返します。Render は `PORT` 環境変数を自動的に注入するため、追加設定は不要です。
+
+### Dockerでのデプロイをしたい場合
+
+`Dockerfile` も同梱しているため、Render側で **Runtime: Docker** を選択してもデプロイ可能です。その場合もEnvironment変数の設定手順は同じです。
 
 ## Botに必要な権限・Intents
 

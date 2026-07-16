@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: ton-continuebot
+    env: node
+    plan: free
+    # コマンド登録も毎回のデプロイ時に自動実行したい場合はこちらを使用
+    # buildCommand: npm install && node deploy-commands.js
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: TOKEN
+        sync: false
+      - key: APPLICATION_ID
+        sync: false
+      - key: GUILD_ID
+        sync: false
+      - key: KEEP_ALIVE
+        value: "true"
